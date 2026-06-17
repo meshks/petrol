@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PetrolScan</title>
+<style>
+  :root {
+    --primary: #0f766e;
+    --primary-dark: #0d5f58;
+    --primary-light: #e0f2f0;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --warning: #d97706;
+    --info: #2563eb;
+    --shadow: 0 1px 6px rgba(0,0,0,0.08);
+    --radius: 12px;
+    --nav-h: 64px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); }
+  body { max-width: 430px; margin: 0 auto; position: relative; overflow-x: hidden; }
+
+  /* App shell */
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  .topbar { background: var(--primary); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; min-height: 56px; flex-shrink: 0; }
+  .topbar-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar-back { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 4px 8px 4px 0; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; }
+  .topbar-action { background: none; border: none; color: #fff; cursor: pointer; padding: 4px; font-size: 13px; font-weight: 500; }
+
+  .screen { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--nav-h) + 8px); }
+  .screen.no-pad { padding-bottom: 0; }
+
+  /* Bottom nav */
+  .bottom-nav { height: var(--nav-h); background: var(--card); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; flex-shrink: 0; position: relative; }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; background: none; border: none; color: var(--text-muted); padding: 6px 0; font-size: 10px; font-weight: 500; transition: color 0.15s; }
+  .nav-btn.active { color: var(--primary); }
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-fab { width: 52px; height: 52px; border-radius: 50%; background: var(--primary); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(15,118,110,0.45); margin-top: -20px; flex-shrink: 0; transition: transform 0.15s, box-shadow 0.15s; }
+  .nav-fab:active { transform: scale(0.94); box-shadow: 0 2px 8px rgba(15,118,110,0.35); }
+  .nav-fab svg { width: 26px; height: 26px; color: #fff; }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .section { padding: 16px; }
+  .section + .section { padding-top: 0; }
+
+  /* Stat grid */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+  .stat-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; }
+  .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .stat-card.accent { background: var(--primary); }
+  .stat-card.accent .stat-label, .stat-card.accent .stat-value, .stat-card.accent .stat-sub { color: #fff; }
+  .stat-card.accent .stat-label { opacity: 0.8; }
+  .stat-card.accent .stat-sub { opacity: 0.75; }
+
+  /* Tx cards */
+  .tx-list { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 10px; }
+  .tx-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; active:opacity-80; }
+  .tx-card:active { opacity: 0.85; }
+  .tx-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tx-icon svg { width: 20px; height: 20px; color: var(--primary); }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-station { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .tx-right { text-align: right; flex-shrink: 0; }
+  .tx-amount { font-size: 15px; font-weight: 700; color: var(--text); }
+  .tx-litres { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Claim badges */
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+  .badge-personal { background: #f1f5f9; color: #475569; }
+  .badge-business { background: #dbeafe; color: #1d4ed8; }
+  .badge-pending { background: #fef3c7; color: #92400e; }
+  .badge-claimed { background: #dcfce7; color: #166534; }
+  .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+  /* Confidence badges */
+  .conf-high { background: #dcfce7; color: #166534; }
+  .conf-medium { background: #fef3c7; color: #92400e; }
+  .conf-low { background: #fee2e2; color: #991b1b; }
+  .conf-edited { background: #e0f2f0; color: var(--primary-dark); }
+
+  /* Section header */
+  .sec-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
+  .sec-title { font-size: 15px; font-weight: 700; }
+  .sec-link { font-size: 13px; color: var(--primary); font-weight: 500; background: none; border: none; cursor: pointer; }
+
+  /* Forms */
+  .form-section { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 15px; color: var(--text); background: var(--card); outline: none; font-family: inherit;
+    transition: border-color 0.15s;
+    -webkit-appearance: none; appearance: none;
+    min-height: 48px;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+  .form-input.conf-medium-field { border-color: #d97706; }
+  .form-input.conf-low-field { border-color: #dc2626; }
+  .form-textarea { min-height: 80px; resize: none; }
+  .form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+  /* Buttons */
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; border-radius: 12px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.15s, transform 0.1s; min-height: 50px; font-family: inherit; }
+  .btn:active { transform: scale(0.98); opacity: 0.9; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-secondary { background: var(--primary-light); color: var(--primary); }
+  .btn-danger { background: #fee2e2; color: var(--danger); }
+  .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; min-height: 36px; border-radius: 8px; }
+
+  /* Bottom action bar */
+  .action-bar { padding: 12px 16px; background: var(--card); border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
+  /* Empty state */
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 32px; text-align: center; gap: 12px; }
+  .empty-icon { width: 72px; height: 72px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .empty-icon svg { width: 36px; height: 36px; color: var(--primary); }
+  .empty-title { font-size: 17px; font-weight: 700; }
+  .empty-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px); background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 1000; white-space: nowrap; max-width: 320px; text-align: center; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Modal / overlay */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: 430px; margin: 0 auto; }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; padding: 20px 20px 32px; transform: translateY(40px); transition: transform 0.25s; }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+
+  /* Processing screen */
+  .processing-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 56px - var(--nav-h)); gap: 24px; padding: 32px; }
+  .processing-img { width: 160px; height: 200px; border-radius: 12px; object-fit: cover; background: var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+  .processing-img img { width: 100%; height: 100%; object-fit: cover; }
+  .processing-img-placeholder { width: 160px; height: 200px; border-radius: 12px; background: linear-gradient(135deg, #e2e8f0, #f1f5f9); display: flex; align-items: center; justify-content: center; }
+  .spinner { width: 48px; height: 48px; border: 4px solid var(--primary-light); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-step { font-size: 15px; color: var(--text-muted); font-weight: 500; }
+  .processing-title { font-size: 19px; font-weight: 700; }
+  .step-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .step-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .step-item.done .step-dot { background: var(--success); }
+  .step-item.active .step-dot { background: var(--primary); animation: pulse 0.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .step-item.done { color: var(--text); }
+  .step-item.active { color: var(--primary); font-weight: 600; }
+
+  /* Receipt upload area */
+  .upload-area { border: 2.5px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s; }
+  .upload-area:hover, .upload-area:active { border-color: var(--primary); background: var(--primary-light); }
+  .upload-icon { width: 52px; height: 52px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .upload-icon svg { width: 26px; height: 26px; color: var(--primary); }
+
+  /* OCR field rows */
+  .ocr-field { position: relative; }
+  .ocr-badge-wrap { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); }
+
+  /* Vehicle cards */
+  .vehicle-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .vehicle-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .vehicle-icon svg { width: 22px; height: 22px; color: var(--primary); }
+  .vehicle-info { flex: 1; min-width: 0; }
+  .vehicle-name { font-size: 15px; font-weight: 700; }
+  .vehicle-plate { font-size: 13px; color: var(--text-muted); margin-top: 1px; }
+  .vehicle-actions { display: flex; gap: 6px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--bg); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn.danger { background: #fee2e2; color: var(--danger); }
+  .icon-btn.edit { color: var(--primary); }
+
+  /* Claim summary table */
+  .claim-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .claim-table th { background: var(--bg); padding: 8px 12px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+  .claim-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .claim-table tr:last-child td { border-bottom: none; }
+  .claim-total { background: var(--primary-light); }
+  .claim-total td { font-weight: 700; color: var(--primary); }
+
+  /* Settings */
+  .settings-list { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-label { font-size: 15px; font-weight: 500; }
+  .settings-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .toggle { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 14px; cursor: pointer; transition: background 0.2s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 22px; height: 22px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .toggle input:checked + .toggle-slider { background: var(--primary); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+  /* Scan choice modal */
+  .scan-choice { display: flex; gap: 12px; padding-top: 4px; }
+  .scan-opt { flex: 1; border: 2px solid var(--border); border-radius: var(--radius); padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: all 0.15s; background: none; }
+  .scan-opt:active, .scan-opt:hover { border-color: var(--primary); background: var(--primary-light); }
+  .scan-opt svg { width: 32px; height: 32px; color: var(--primary); }
+  .scan-opt span { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* Detail rows */
+  .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  .detail-val { font-size: 14px; font-weight: 600; text-align: right; max-width: 55%; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto; scrollbar-width: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1.5px solid var(--border); background: var(--card); cursor: pointer; white-space: nowrap; color: var(--text-muted); flex-shrink: 0; }
+  .filter-chip.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+
+  /* Month header on dashboard */
+  .month-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 4px; }
+  .month-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+
+  /* Receipt image preview */
+  .receipt-preview { width: 100%; height: 180px; border-radius: var(--radius); overflow: hidden; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+  .receipt-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .receipt-preview-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* About section */
+  .about-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; text-align: center; }
+  .app-logo { width: 64px; height: 64px; background: var(--primary); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .app-logo svg { width: 32px; height: 32px; color: #fff; }
+
+  /* Fade transition */
+  .screen { animation: fadeIn 0.18s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Scrollbar */
+  .screen::-webkit-scrollbar { width: 0; }
+
+  /* Danger zone */
+  .danger-zone { border: 1.5px dashed #fca5a5; border-radius: var(--radius); padding: 14px; margin: 0 16px; }
+
+  /* Month select */
+  .month-select { background: var(--card); border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 28px 6px 10px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+
+  /* Hidden */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar" id="topbar">
+    <button class="topbar-back hidden" id="topbar-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      <span id="back-label">Back</span>
+    </button>
+    <span class="topbar-title" id="topbar-title">PetrolScan</span>
+    <button class="topbar-action hidden" id="topbar-action" onclick="topbarAction()"></button>
+  </div>
+
+  <div id="screen-container" class="screen"></div>
+
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-btn" id="nav-home" onclick="navigate('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span data-i18n="nav_home">Home</span>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="navigate('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span data-i18n="nav_history">History</span>
+    </button>
+    <button class="nav-fab" id="nav-scan" onclick="showScanModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    </button>
+    <button class="nav-btn" id="nav-vehicles" onclick="navigate('vehicles')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      <span data-i18n="nav_vehicles">Vehicles</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="navigate('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span data-i18n="nav_settings">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Scan modal -->
+<div class="modal-overlay" id="scan-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-i18n="scan_modal_title">Scan Receipt</div>
+    <div class="scan-choice">
+      <button class="scan-opt" onclick="triggerCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span data-i18n="take_photo">Take Photo</span>
+      </button>
+      <button class="scan-opt" onclick="triggerGallery()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span data-i18n="upload_gallery">Upload from Gallery</span>
+      </button>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-outline btn-full" onclick="closeScanModal()" data-i18n="cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="file-camera" accept="image/*" capture="environment" style="display:none" onchange="handleImageSelected(this)">
+<input type="file" id="file-gallery" accept="image/*" style="display:none" onchange="handleImageSelected(this)">
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// TRANSLATIONS
+// ============================================================
+const I18N = {
+  en: {
+    nav_home: 'Home', nav_history: 'History', nav_vehicles: 'Vehicles', nav_settings: 'Settings',
+    scan_modal_title: 'Scan Receipt', take_photo: 'Take Photo', upload_gallery: 'Upload from Gallery',
+    cancel: 'Cancel', save: 'Save', edit: 'Edit', delete: 'Delete', back: 'Back',
+    dashboard_title: 'PetrolScan', dashboard_greeting: 'Good day!',
+    total_spent: 'Total Spent', total_litres: 'Total Litres', transactions: 'Transactions',
+    pending_claims: 'Pending Claims', recent_tx: 'Recent Transactions', view_all: 'View All',
+    no_tx: 'No transactions yet', no_tx_sub: 'Tap the camera button below to scan your first petrol receipt.',
+    scan_receipt: 'Scan Receipt', processing: 'Processing receipt...', reading_text: 'Detecting text...',
+    parsing: 'Parsing receipt data...', verifying: 'Verifying fields...',
+    ocr_confirm: 'Confirm Receipt', station_name: 'Station Name', branch: 'Branch / Location',
+    date: 'Date', time: 'Time', receipt_no: 'Receipt No.', fuel_type: 'Fuel Type',
+    litres: 'Litres', price_per_litre: 'Price / Litre (RM)', total_amount: 'Total Amount (RM)',
+    payment_method: 'Payment Method', vehicle: 'Vehicle', odometer: 'Odometer (km)',
+    claim_status: 'Claim Status', notes: 'Notes / Purpose', save_transaction: 'Save Transaction',
+    discard: 'Discard', high: 'High', medium: 'Medium', low: 'Low', edited: 'Edited',
+    history_title: 'History', no_history: 'No receipts yet', no_history_sub: 'Your saved petrol receipts will appear here.',
+    filter_all: 'All', filter_personal: 'Personal', filter_business: 'Business',
+    filter_pending: 'Pending', filter_claimed: 'Claimed', filter_rejected: 'Rejected',
+    tx_detail: 'Transaction Detail', confirm_delete: 'Delete this transaction?',
+    vehicles_title: 'My Vehicles', add_vehicle: 'Add Vehicle', no_vehicles: 'No vehicles yet',
+    no_vehicles_sub: 'Add your car or motorcycle to link it to fuel transactions.',
+    plate: 'Plate Number', nickname: 'Nickname', vehicle_type: 'Vehicle Type', default_fuel: 'Default Fuel',
+    claim_summary: 'Claim Summary', month: 'Month', status_filter: 'Status', export_csv: 'Export CSV',
+    total: 'Total', no_claims: 'No matching transactions', no_claims_sub: 'Try changing the filters above.',
+    settings_title: 'Settings', language: 'Language', language_sub: 'Toggle English / Malay',
+    clear_data: 'Clear All Data', clear_data_sub: 'Remove all transactions and vehicles',
+    about: 'About PetrolScan', version: 'Version 1.0.0 (Prototype)',
+    confirm_clear: 'This will delete all your data. Continue?',
+    add_tx: 'Add Transaction', edit_tx: 'Edit Transaction',
+    claim_personal: 'Personal', claim_business: 'Business', claim_pending: 'Pending Claim',
+    claim_claimed: 'Claimed', claim_rejected: 'Rejected',
+    none_vehicle: '— Select Vehicle —', manual_entry: 'Manual Entry',
+    tx_saved: 'Transaction saved!', vehicle_saved: 'Vehicle saved!', vehicle_deleted: 'Vehicle deleted.',
+    tx_deleted: 'Transaction deleted.', data_cleared: 'All data cleared.',
+    export_done: 'CSV exported!', required_fields: 'Please fill in station name and total amount.',
+    confirm_delete_vehicle: 'Delete this vehicle?',
+  },
+  my: {
+    nav_home: 'Utama', nav_history: 'Sejarah', nav_vehicles: 'Kenderaan', nav_settings: 'Tetapan',
+    scan_modal_title: 'Imbas Resit', take_photo: 'Ambil Foto', upload_gallery: 'Muat Naik dari Galeri',
+    cancel: 'Batal', save: 'Simpan', edit: 'Edit', delete: 'Padam', back: 'Kembali',
+    dashboard_title: 'PetrolScan', dashboard_greeting: 'Selamat datang!',
+    total_spent: 'Jumlah Perbelanjaan', total_litres: 'Jumlah Liter', transactions: 'Transaksi',
+    pending_claims: 'Tuntutan Tertunggak', recent_tx: 'Transaksi Terkini', view_all: 'Lihat Semua',
+    no_tx: 'Tiada transaksi', no_tx_sub: 'Tekan butang kamera di bawah untuk mengimbas resit pertama anda.',
+    scan_receipt: 'Imbas Resit', processing: 'Memproses resit...', reading_text: 'Mengesan teks...',
+    parsing: 'Menghurai data resit...', verifying: 'Mengesahkan medan...',
+    ocr_confirm: 'Sahkan Resit', station_name: 'Nama Stesen', branch: 'Cawangan / Lokasi',
+    date: 'Tarikh', time: 'Masa', receipt_no: 'No. Resit', fuel_type: 'Jenis Bahan Api',
+    litres: 'Liter', price_per_litre: 'Harga / Liter (RM)', total_amount: 'Jumlah (RM)',
+    payment_method: 'Kaedah Bayaran', vehicle: 'Kenderaan', odometer: 'Odometer (km)',
+    claim_status: 'Status Tuntutan', notes: 'Nota / Tujuan', save_transaction: 'Simpan Transaksi',
+    discard: 'Buang', high: 'Tinggi', medium: 'Sederhana', low: 'Rendah', edited: 'Diedit',
+    history_title: 'Sejarah', no_history: 'Tiada resit lagi', no_history_sub: 'Resit petrol yang disimpan akan muncul di sini.',
+    filter_all: 'Semua', filter_personal: 'Peribadi', filter_business: 'Perniagaan',
+    filter_pending: 'Tertunggak', filter_claimed: 'Dituntut', filter_rejected: 'Ditolak',
+    tx_detail: 'Butiran Transaksi', confirm_delete: 'Padam transaksi ini?',
+    vehicles_title: 'Kenderaan Saya', add_vehicle: 'Tambah Kenderaan', no_vehicles: 'Tiada kenderaan',
+    no_vehicles_sub: 'Tambah kereta atau motosikal anda untuk dihubungkan dengan rekod bahan api.',
+    plate: 'No. Plat', nickname: 'Nama Panggilan', vehicle_type: 'Jenis Kenderaan', default_fuel: 'Bahan Api Lalai',
+    claim_summary: 'Ringkasan Tuntutan', month: 'Bulan', status_filter: 'Status', export_csv: 'Eksport CSV',
+    total: 'Jumlah', no_claims: 'Tiada transaksi sepadan', no_claims_sub: 'Cuba tukar penapis di atas.',
+    settings_title: 'Tetapan', language: 'Bahasa', language_sub: 'Togol Inggeris / Melayu',
+    clear_data: 'Padam Semua Data', clear_data_sub: 'Buang semua transaksi dan kenderaan',
+    about: 'Tentang PetrolScan', version: 'Versi 1.0.0 (Prototaip)',
+    confirm_clear: 'Ini akan memadam semua data anda. Teruskan?',
+    add_tx: 'Tambah Transaksi', edit_tx: 'Edit Transaksi',
+    claim_personal: 'Peribadi', claim_business: 'Perniagaan', claim_pending: 'Tuntutan Tertunggak',
+    claim_claimed: 'Dituntut', claim_rejected: 'Ditolak',
+    none_vehicle: '— Pilih Kenderaan —', manual_entry: 'Input Manual',
+    tx_saved: 'Transaksi disimpan!', vehicle_saved: 'Kenderaan disimpan!', vehicle_deleted: 'Kenderaan dipadam.',
+    tx_deleted: 'Transaksi dipadam.', data_cleared: 'Semua data dipadam.',
+    export_done: 'CSV dieksport!', required_fields: 'Sila isi nama stesen dan jumlah bayaran.',
+    confirm_delete_vehicle: 'Padam kenderaan ini?',
+  }
+};
+
+function t(key) { return (I18N[state.lang] || I18N.en)[key] || key; }
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+}
+
+// ============================================================
+// STATE & STORAGE
+// ============================================================
+const KEYS = { vehicles: 'ps_vehicles', transactions: 'ps_transactions', settings: 'ps_settings' };
+
+const state = {
+  lang: 'en',
+  currentScreen: 'home',
+  screenStack: [],
+  editingTxId: null,
+  editingVehicleId: null,
+  viewingTxId: null,
+  pendingImage: null, // base64 or null
+  ocrData: null,
+  historyFilter: 'all',
+};
+
+function load(key) { try { return JSON.parse(localStorage.getItem(key)) || null; } catch(e) { return null; } }
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function getVehicles() { return load(KEYS.vehicles) || []; }
+function saveVehicles(v) { save(KEYS.vehicles, v); }
+function getTransactions() { return load(KEYS.transactions) || []; }
+function saveTransactions(v) { save(KEYS.transactions, v); }
+function getSettings() { return load(KEYS.settings) || { lang: 'en' }; }
+function saveSettings(v) { save(KEYS.settings, v); }
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// ============================================================
+// SEED DATA
+// ============================================================
+function seedIfEmpty() {
+  const settings = getSettings();
+  state.lang = settings.lang || 'en';
+
+  if (getVehicles().length === 0) {
+    saveVehicles([
+      { id: 'v1', plate: 'WQR 3421', nickname: 'MyVi White', type: 'Car', defaultFuel: 'RON95', createdAt: '2025-01-10T10:00:00Z' },
+      { id: 'v2', plate: 'BKK 9182', nickname: 'Honda Wave', type: 'Motorcycle', defaultFuel: 'RON95', createdAt: '2025-02-15T10:00:00Z' },
+    ]);
+  }
+
+  if (getTransactions().length === 0) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const pm = String(now.getMonth()).padStart(2, '0') || '12';
+    const py = now.getMonth() === 0 ? y - 1 : y;
+
+    saveTransactions([
+      { id: 't1', vehicleId: 'v1', station: 'Petronas Dagangan', branch: 'Jalan Ampang, KL', date: `${y}-${m}-12`, time: '14:32', receiptNo: 'PTR-20240612-0042', fuelType: 'RON95', litres: 30.5, pricePerLitre: 2.05, total: 62.53, payment: 'Card', odometer: 54320, claimStatus: 'Business', notes: 'Client visit Ampang', imageData: null, createdAt: `${y}-${m}-12T14:32:00Z` },
+      { id: 't2', vehicleId: 'v1', station: 'Shell Malaysia', branch: 'Puchong Perdana', date: `${y}-${m}-08`, time: '08:15', receiptNo: 'SHL-20240608-8821', fuelType: 'RON97', litres: 22.8, pricePerLitre: 3.47, total: 79.12, payment: 'Touch n Go', odometer: 54100, claimStatus: 'Personal', notes: '', imageData: null, createdAt: `${y}-${m}-08T08:15:00Z` },
+      { id: 't3', vehicleId: 'v2', station: 'BHP Fuel', branch: 'Shah Alam Sek 7', date: `${y}-${m}-03`, time: '17:45', receiptNo: 'BHP-20240603-3391', fuelType: 'RON95', litres: 5.2, pricePerLitre: 2.05, total: 10.66, payment: 'Cash', odometer: 18200, claimStatus: 'Personal', notes: 'Daily commute', imageData: null, createdAt: `${y}-${m}-03T17:45:00Z` },
+      { id: 't4', vehicleId: 'v1', station: 'Petron Malaysia', branch: 'Subang Jaya USJ', date: `${y}-${m}-01`, time: '11:20', receiptNo: 'PTN-20240601-5512', fuelType: 'RON95', litres: 18.3, pricePerLitre: 2.05, total: 37.52, payment: 'Boost', odometer: 53890, claimStatus: 'Pending Claim', notes: 'Sales trip USJ', imageData: null, createdAt: `${y}-${m}-01T11:20:00Z` },
+      { id: 't5', vehicleId: 'v1', station: 'Petronas Dagangan', branch: 'Cheras Batu 9', date: `${py}-${pm}-22`, time: '09:05', receiptNo: 'PTR-202405-7788', fuelType: 'RON95', litres: 28.0, pricePerLitre: 2.05, total: 57.40, payment: 'Card', odometer: 53600, claimStatus: 'Claimed', notes: '', imageData: null, createdAt: `${py}-${pm}-22T09:05:00Z` },
+      { id: 't6', vehicleId: 'v1', station: 'Shell Malaysia', branch: 'Kepong Baru', date: `${py}-${pm}-10`, time: '16:30', receiptNo: 'SHL-202405-4421', fuelType: 'RON97', litres: 20.0, pricePerLitre: 3.47, total: 69.40, payment: 'Touch n Go', odometer: 53200, claimStatus: 'Claimed', notes: 'Office trip', imageData: null, createdAt: `${py}-${pm}-10T16:30:00Z` },
+    ]);
+  }
+}
+
+// ============================================================
+// MOCK OCR SAMPLES
+// ============================================================
+const OCR_SAMPLES = [
+  { station: 'Petronas Dagangan', branch: 'Jalan Ampang, KL', date: todayDate(), time: currentTime(), receiptNo: 'PTR-' + Date.now().toString().slice(-8), fuelType: 'RON95', litres: 30.5, pricePerLitre: 2.05, total: 62.53, payment: 'Card', confidence: { station: 'high', branch: 'high', date: 'high', time: 'high', receiptNo: 'medium', fuelType: 'high', litres: 'medium', pricePerLitre: 'medium', total: 'high', payment: 'high' } },
+  { station: 'Shell Malaysia', branch: 'Puchong Perdana', date: todayDate(), time: currentTime(), receiptNo: 'SHL-' + Date.now().toString().slice(-8), fuelType: 'RON97', litres: 22.8, pricePerLitre: 3.47, total: 79.12, payment: 'Touch n Go', confidence: { station: 'high', branch: 'medium', date: 'high', time: 'medium', receiptNo: 'low', fuelType: 'high', litres: 'medium', pricePerLitre: 'medium', total: 'high', payment: 'high' } },
+  { station: 'BHP Fuel', branch: 'Shah Alam Sek 7', date: todayDate(), time: currentTime(), receiptNo: 'BHP-' + Date.now().toString().slice(-8), fuelType: 'Diesel', litres: 45.0, pricePerLitre: 2.15, total: 96.75, payment: 'Cash', confidence: { station: 'high', branch: 'medium', date: 'high', time: 'high', receiptNo: 'low', fuelType: 'high', litres: 'high', pricePerLitre: 'medium', total: 'high', payment: 'medium' } },
+  { station: 'Petron Malaysia', branch: 'Subang Jaya USJ', date: todayDate(), time: currentTime(), receiptNo: 'PTN-' + Date.now().toString().slice(-8), fuelType: 'RON95', litres: 18.3, pricePerLitre: 2.05, total: 37.52, payment: 'Boost', confidence: { station: 'high', branch: 'medium', date: 'high', time: 'medium', receiptNo: 'low', fuelType: 'high', litres: 'medium', pricePerLitre: 'high', total: 'high', payment: 'medium' } },
+];
+let ocrSampleIdx = 0;
+
+function todayDate() { return new Date().toISOString().split('T')[0]; }
+function currentTime() { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+function getNextOcrSample() {
+  const s = { ...OCR_SAMPLES[ocrSampleIdx % OCR_SAMPLES.length] };
+  s.receiptNo = s.receiptNo.split('-')[0] + '-' + Date.now().toString().slice(-8);
+  s.date = todayDate(); s.time = currentTime();
+  ocrSampleIdx++;
+  return s;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+let _topbarActionFn = null;
+function topbarAction() { if (_topbarActionFn) _topbarActionFn(); }
+
+function navigate(screen, params = {}) {
+  if (screen !== 'home' && screen !== 'history' && screen !== 'vehicles' && screen !== 'settings') {
+    state.screenStack.push(state.currentScreen);
+  } else {
+    state.screenStack = [];
+  }
+  state.currentScreen = screen;
+  if (params.txId) state.viewingTxId = params.txId;
+  if (params.editTxId !== undefined) state.editingTxId = params.editTxId;
+  if (params.editVehicleId !== undefined) state.editingVehicleId = params.editVehicleId;
+  render();
+}
+
+function goBack() {
+  const prev = state.screenStack.pop();
+  state.currentScreen = prev || 'home';
+  render();
+}
+
+function render() {
+  const sc = document.getElementById('screen-container');
+  const backBtn = document.getElementById('topbar-back');
+  const titleEl = document.getElementById('topbar-title');
+  const actionBtn = document.getElementById('topbar-action');
+  _topbarActionFn = null;
+  actionBtn.classList.add('hidden');
+
+  // Nav highlighting
+  ['home','history','vehicles','settings'].forEach(n => {
+    const el = document.getElementById('nav-' + n);
+    if (el) el.classList.toggle('active', state.currentScreen === n);
+  });
+
+  const isRoot = ['home','history','vehicles','settings'].includes(state.currentScreen);
+  backBtn.classList.toggle('hidden', isRoot);
+  document.getElementById('back-label').textContent = t('back');
+
+  const screens = {
+    home: renderHome,
+    history: renderHistory,
+    vehicles: renderVehicles,
+    settings: renderSettings,
+    processing: renderProcessing,
+    ocr_confirm: renderOcrConfirm,
+    tx_detail: renderTxDetail,
+    add_tx: renderAddTx,
+    add_vehicle: renderAddVehicle,
+    claim_summary: renderClaimSummary,
+  };
+
+  const titles = {
+    home: 'PetrolScan', history: t('history_title'), vehicles: t('vehicles_title'),
+    settings: t('settings_title'), processing: t('scan_receipt'), ocr_confirm: t('ocr_confirm'),
+    tx_detail: t('tx_detail'), add_tx: state.editingTxId ? t('edit_tx') : t('add_tx'),
+    add_vehicle: state.editingVehicleId !== null ? t('edit') + ' ' + t('nav_vehicles') : t('add_vehicle'),
+    claim_summary: t('claim_summary'),
+  };
+
+  titleEl.textContent = titles[state.currentScreen] || 'PetrolScan';
+
+  const fn = screens[state.currentScreen];
+  sc.innerHTML = fn ? fn() : '';
+  applyI18n();
+  attachListeners();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+function fmtRM(v) { return 'RM ' + parseFloat(v || 0).toFixed(2); }
+function badgeClass(status) {
+  return { Personal: 'badge-personal', Business: 'badge-business', 'Pending Claim': 'badge-pending', Claimed: 'badge-claimed', Rejected: 'badge-rejected' }[status] || 'badge-personal';
+}
+function claimLabel(status) {
+  return { Personal: t('claim_personal'), Business: t('claim_business'), 'Pending Claim': t('claim_pending'), Claimed: t('claim_claimed'), Rejected: t('claim_rejected') }[status] || status;
+}
+function confBadge(level) {
+  const cls = { high: 'conf-high', medium: 'conf-medium', low: 'conf-low', edited: 'conf-edited' }[level] || '';
+  const label = { high: t('high'), medium: t('medium'), low: t('low'), edited: t('edited') }[level] || level;
+  return `<span class="badge ${cls}" style="font-size:10px">${label}</span>`;
+}
+function inputClass(level) { return level === 'medium' ? 'conf-medium-field' : level === 'low' ? 'conf-low-field' : ''; }
+function vehicleOptions(selected) {
+  const vs = getVehicles();
+  let opts = `<option value="">${t('none_vehicle')}</option>`;
+  vs.forEach(v => { opts += `<option value="${v.id}" ${selected === v.id ? 'selected' : ''}>${v.nickname} (${v.plate})</option>`; });
+  return opts;
+}
+function vehicleName(id) { const v = getVehicles().find(x => x.id === id); return v ? `${v.nickname} (${v.plate})` : t('manual_entry'); }
+
+function currentMonthKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function monthLabel(key) {
+  if (!key) return '';
+  const [y, m] = key.split('-');
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[parseInt(m)-1]} ${y}`;
+}
+function getMonthKeys() {
+  const txs = getTransactions();
+  const keys = [...new Set(txs.map(t => t.date.slice(0,7)))].sort().reverse();
+  if (!keys.includes(currentMonthKey())) keys.unshift(currentMonthKey());
+  return keys;
+}
+
+// ============================================================
+// SCREEN: HOME
+// ============================================================
+function renderHome() {
+  const txs = getTransactions();
+  const mk = currentMonthKey();
+  const thisMonth = txs.filter(t => t.date.startsWith(mk));
+  const totalSpent = thisMonth.reduce((s, t) => s + (parseFloat(t.total) || 0), 0);
+  const totalLitres = thisMonth.reduce((s, t) => s + (parseFloat(t.litres) || 0), 0);
+  const pendingClaims = txs.filter(t => t.claimStatus === 'Pending Claim').length;
+  const recent = [...txs].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 4);
+
+  const recentHtml = recent.length === 0
+    ? `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="empty-title" data-i18n="no_tx"></div><div class="empty-text" data-i18n="no_tx_sub"></div></div>`
+    : recent.map(tx => txCardHtml(tx)).join('');
+
+  return `
+    <div class="month-bar">
+      <span class="month-label">${monthLabel(mk)}</span>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card accent">
+        <div class="stat-label" data-i18n="total_spent"></div>
+        <div class="stat-value">${fmtRM(totalSpent)}</div>
+        <div class="stat-sub">${monthLabel(mk)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" data-i18n="total_litres"></div>
+        <div class="stat-value">${totalLitres.toFixed(1)}L</div>
+        <div class="stat-sub">${thisMonth.length} ${t('transactions').toLowerCase()}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" data-i18n="transactions"></div>
+        <div class="stat-value">${thisMonth.length}</div>
+        <div class="stat-sub">${monthLabel(mk)}</div>
+      </div>
+      <div class="stat-card" onclick="navigate('claim_summary')" style="cursor:pointer">
+        <div class="stat-label" data-i18n="pending_claims"></div>
+        <div class="stat-value" style="color:${pendingClaims > 0 ? '#d97706' : 'var(--text)'}">${pendingClaims}</div>
+        <div class="stat-sub">Tap to view</div>
+      </div>
+    </div>
+    <div class="sec-header">
+      <span class="sec-title" data-i18n="recent_tx"></span>
+      <button class="sec-link" onclick="navigate('history')" data-i18n="view_all"></button>
+    </div>
+    <div class="tx-list">${recentHtml}</div>
+    <div style="height:8px"></div>
+  `;
+}
+
+function txCardHtml(tx) {
+  return `
+    <div class="tx-card" onclick="navigate('tx_detail', {txId:'${tx.id}'})">
+      <div class="tx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="tx-info">
+        <div class="tx-station">${tx.station}</div>
+        <div class="tx-meta">${fmtDate(tx.date)} · ${tx.fuelType} <span class="badge ${badgeClass(tx.claimStatus)}">${claimLabel(tx.claimStatus)}</span></div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amount">${fmtRM(tx.total)}</div>
+        <div class="tx-litres">${parseFloat(tx.litres).toFixed(1)}L</div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// SCREEN: HISTORY
+// ============================================================
+function renderHistory() {
+  const txs = getTransactions();
+  const f = state.historyFilter;
+  const filtered = f === 'all' ? txs : txs.filter(t => {
+    if (f === 'personal') return t.claimStatus === 'Personal';
+    if (f === 'business') return t.claimStatus === 'Business';
+    if (f === 'pending') return t.claimStatus === 'Pending Claim';
+    if (f === 'claimed') return t.claimStatus === 'Claimed';
+    if (f === 'rejected') return t.claimStatus === 'Rejected';
+    return true;
+  });
+  const sorted = [...filtered].sort((a,b) => b.date.localeCompare(a.date));
+
+  const chips = [
+    { key: 'all', label: t('filter_all') }, { key: 'personal', label: t('filter_personal') },
+    { key: 'business', label: t('filter_business') }, { key: 'pending', label: t('filter_pending') },
+    { key: 'claimed', label: t('filter_claimed') }, { key: 'rejected', label: t('filter_rejected') },
+  ];
+
+  const filterHtml = chips.map(c => `<button class="filter-chip ${f === c.key ? 'active' : ''}" onclick="setHistoryFilter('${c.key}')">${c.label}</button>`).join('');
+
+  const listHtml = sorted.length === 0
+    ? `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="empty-title" data-i18n="no_history"></div><div class="empty-text" data-i18n="no_history_sub"></div></div>`
+    : `<div class="tx-list">${sorted.map(tx => txCardHtml(tx)).join('')}</div>`;
+
+  const actionHtml = `<div class="action-bar"><button class="btn btn-primary btn-full" onclick="navigate('add_tx', {editTxId:null})">${svgPlus()} ${t('add_tx')}</button></div>`;
+
+  return `<div class="filter-bar">${filterHtml}</div>${listHtml}<div style="height:8px"></div>${actionHtml}`;
+}
+
+function setHistoryFilter(f) { state.historyFilter = f; render(); }
+
+// ============================================================
+// SCREEN: TX DETAIL
+// ============================================================
+function renderTxDetail() {
+  const tx = getTransactions().find(t => t.id === state.viewingTxId);
+  if (!tx) return '<div class="section"><p>Not found.</p></div>';
+
+  const imgHtml = tx.imageData
+    ? `<div class="section"><div class="receipt-preview"><img src="${tx.imageData}" alt="receipt"></div></div>`
+    : `<div class="section"><div class="receipt-preview"><div class="receipt-preview-placeholder"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>No image</span></div></div></div>`;
+
+  const rows = [
+    [t('station_name'), tx.station], [t('branch'), tx.branch || '—'], [t('date'), fmtDate(tx.date)],
+    [t('time'), tx.time || '—'], [t('receipt_no'), tx.receiptNo || '—'], [t('fuel_type'), tx.fuelType],
+    [t('litres'), `${parseFloat(tx.litres).toFixed(2)} L`], [t('price_per_litre'), `RM ${parseFloat(tx.pricePerLitre).toFixed(3)}`],
+    [t('total_amount'), fmtRM(tx.total)], [t('payment_method'), tx.payment || '—'],
+    [t('vehicle'), vehicleName(tx.vehicleId)], [t('odometer'), tx.odometer ? tx.odometer + ' km' : '—'],
+    [t('claim_status'), `<span class="badge ${badgeClass(tx.claimStatus)}">${claimLabel(tx.claimStatus)}</span>`],
+    [t('notes'), tx.notes || '—'],
+  ];
+
+  const tableHtml = rows.map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
+
+  return `
+    ${imgHtml}
+    <div class="section card" style="margin:0 16px 12px">${tableHtml}</div>
+    <div class="action-bar">
+      <button class="btn btn-secondary" style="flex:1" onclick="navigate('add_tx',{editTxId:'${tx.id}'})">${svgEdit()} ${t('edit')}</button>
+      <button class="btn btn-danger" style="flex:1" onclick="deleteTx('${tx.id}')">${svgTrash()} ${t('delete')}</button>
+    </div>
+  `;
+}
+
+function deleteTx(id) {
+  if (!confirm(t('confirm_delete'))) return;
+  const txs = getTransactions().filter(t => t.id !== id);
+  saveTransactions(txs);
+  toast(t('tx_deleted'));
+  navigate('history');
+}
+
+// ============================================================
+// SCREEN: ADD/EDIT TRANSACTION
+// ============================================================
+function renderAddTx() {
+  const tx = state.editingTxId ? getTransactions().find(t => t.id === state.editingTxId) : null;
+  const d = tx || {};
+
+  const fuelTypes = ['RON95','RON97','RON100','Diesel','E5','E10'];
+  const payments = ['Cash','Card','Touch n Go','Boost','GrabPay','ShopeePay'];
+  const claimStatuses = ['Personal','Business','Pending Claim','Claimed','Rejected'];
+
+  return `
+    <div class="form-section">
+      <div class="form-group">
+        <label class="form-label">${t('station_name')} *</label>
+        <input class="form-input" id="f-station" value="${d.station || ''}" placeholder="e.g. Petronas Dagangan">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('branch')}</label>
+        <input class="form-input" id="f-branch" value="${d.branch || ''}" placeholder="e.g. Jalan Ampang, KL">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('date')} *</label>
+        <input class="form-input" id="f-date" type="date" value="${d.date || todayDate()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('time')}</label>
+        <input class="form-input" id="f-time" type="time" value="${d.time || currentTime()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('receipt_no')}</label>
+        <input class="form-input" id="f-receiptNo" value="${d.receiptNo || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('fuel_type')}</label>
+        <select class="form-select" id="f-fuelType">${fuelTypes.map(f => `<option ${d.fuelType===f?'selected':''}>${f}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('litres')}</label>
+        <input class="form-input" id="f-litres" type="number" step="0.01" value="${d.litres || ''}" placeholder="e.g. 30.50">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('price_per_litre')}</label>
+        <input class="form-input" id="f-pricePerLitre" type="number" step="0.001" value="${d.pricePerLitre || ''}" placeholder="e.g. 2.050">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('total_amount')} *</label>
+        <input class="form-input" id="f-total" type="number" step="0.01" value="${d.total || ''}" placeholder="e.g. 62.53">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('payment_method')}</label>
+        <select class="form-select" id="f-payment">${payments.map(p => `<option ${d.payment===p?'selected':''}>${p}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('vehicle')}</label>
+        <select class="form-select" id="f-vehicleId">${vehicleOptions(d.vehicleId)}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('odometer')}</label>
+        <input class="form-input" id="f-odometer" type="number" value="${d.odometer || ''}" placeholder="e.g. 54320">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('claim_status')}</label>
+        <select class="form-select" id="f-claimStatus">${claimStatuses.map(s => `<option value="${s}" ${d.claimStatus===s?'selected':''}>${claimLabel(s)}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('notes')}</label>
+        <textarea class="form-textarea" id="f-notes" placeholder="e.g. Client visit">${d.notes || ''}</textarea>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-outline" style="flex:0 0 auto;min-width:90px" onclick="goBack()" data-i18n="cancel"></button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveTx()">${t('save_transaction')}</button>
+    </div>
+  `;
+}
+
+function saveTx() {
+  const station = document.getElementById('f-station').value.trim();
+  const total = document.getElementById('f-total').value;
+  if (!station || !total) { toast(t('required_fields')); return; }
+
+  const txs = getTransactions();
+  const id = state.editingTxId || uid();
+  const existing = state.editingTxId ? txs.find(t => t.id === id) : null;
+
+  const tx = {
+    id,
+    vehicleId: document.getElementById('f-vehicleId').value,
+    station,
+    branch: document.getElementById('f-branch').value.trim(),
+    date: document.getElementById('f-date').value,
+    time: document.getElementById('f-time').value,
+    receiptNo: document.getElementById('f-receiptNo').value.trim(),
+    fuelType: document.getElementById('f-fuelType').value,
+    litres: parseFloat(document.getElementById('f-litres').value) || 0,
+    pricePerLitre: parseFloat(document.getElementById('f-pricePerLitre').value) || 0,
+    total: parseFloat(total),
+    payment: document.getElementById('f-payment').value,
+    odometer: parseInt(document.getElementById('f-odometer').value) || null,
+    claimStatus: document.getElementById('f-claimStatus').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    imageData: (existing && existing.imageData) || state.pendingImage || null,
+    createdAt: (existing && existing.createdAt) || new Date().toISOString(),
+  };
+
+  if (state.editingTxId) {
+    const idx = txs.findIndex(t => t.id === id);
+    if (idx >= 0) txs[idx] = tx; else txs.push(tx);
+  } else {
+    txs.push(tx);
+  }
+  saveTransactions(txs);
+  state.pendingImage = null;
+  state.editingTxId = null;
+  toast(t('tx_saved'));
+  navigate('history');
+}
+
+// ============================================================
+// SCREEN: OCR CONFIRM
+// ============================================================
+function renderOcrConfirm() {
+  const d = state.ocrData || {};
+  const c = d.confidence || {};
+  const fuelTypes = ['RON95','RON97','RON100','Diesel','E5','E10'];
+  const payments = ['Cash','Card','Touch n Go','Boost','GrabPay','ShopeePay'];
+  const claimStatuses = ['Personal','Business','Pending Claim','Claimed','Rejected'];
+
+  function field(id, label, value, conf, type='text', options=null) {
+    const badge = conf ? confBadge(conf) : '';
+    const cls = inputClass(conf);
+    if (options) {
+      return `<div class="form-group"><label class="form-label">${label} ${badge}</label><select class="form-select ${cls}" id="of-${id}">${options.map(o => `<option ${value===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+    }
+    return `<div class="form-group"><label class="form-label">${label} ${badge}</label><input class="form-input ${cls}" id="of-${id}" type="${type}" value="${value || ''}" oninput="markEdited(this)"></div>`;
+  }
+
+  return `
+    ${state.pendingImage ? `<div class="section"><div class="receipt-preview"><img src="${state.pendingImage}" alt="receipt"></div></div>` : ''}
+    <div style="padding:12px 16px 4px;background:#fef3c7;margin:0 0 0 0;font-size:13px;color:#92400e;display:flex;gap:8px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Review highlighted fields — they may need correction.</div>
+    <div class="form-section">
+      ${field('station', t('station_name'), d.station, c.station)}
+      ${field('branch', t('branch'), d.branch, c.branch)}
+      ${field('date', t('date'), d.date, c.date, 'date')}
+      ${field('time', t('time'), d.time, c.time, 'time')}
+      ${field('receiptNo', t('receipt_no'), d.receiptNo, c.receiptNo)}
+      ${field('fuelType', t('fuel_type'), d.fuelType, c.fuelType, 'text', fuelTypes)}
+      ${field('litres', t('litres'), d.litres, c.litres, 'number')}
+      ${field('pricePerLitre', t('price_per_litre'), d.pricePerLitre, c.pricePerLitre, 'number')}
+      ${field('total', t('total_amount'), d.total, c.total, 'number')}
+      ${field('payment', t('payment_method'), d.payment, c.payment, 'text', payments)}
+      <div class="form-group">
+        <label class="form-label">${t('vehicle')}</label>
+        <select class="form-select" id="of-vehicleId">${vehicleOptions('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('odometer')}</label>
+        <input class="form-input" id="of-odometer" type="number" placeholder="e.g. 54320">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('claim_status')}</label>
+        <select class="form-select" id="of-claimStatus">${claimStatuses.map(s => `<option value="${s}">${claimLabel(s)}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('notes')}</label>
+        <textarea class="form-textarea" id="of-notes" placeholder="e.g. Sales trip"></textarea>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-outline" style="flex:0 0 auto;min-width:90px" onclick="navigate('home')" data-i18n="discard"></button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveOcrTx()">${t('save_transaction')}</button>
+    </div>
+  `;
+}
+
+function markEdited(el) {
+  const label = el.closest('.form-group').querySelector('.form-label');
+  const badge = label.querySelector('.badge');
+  if (badge) badge.outerHTML = confBadge('edited');
+  el.className = el.className.replace(/conf-(medium|low)-field/g, '');
+}
+
+function saveOcrTx() {
+  const station = (document.getElementById('of-station') || {}).value || '';
+  const total = (document.getElementById('of-total') || {}).value || '';
+  if (!station.trim() || !total) { toast(t('required_fields')); return; }
+
+  const txs = getTransactions();
+  const tx = {
+    id: uid(),
+    vehicleId: document.getElementById('of-vehicleId').value,
+    station: station.trim(),
+    branch: document.getElementById('of-branch').value.trim(),
+    date: document.getElementById('of-date').value,
+    time: document.getElementById('of-time').value,
+    receiptNo: document.getElementById('of-receiptNo').value.trim(),
+    fuelType: document.getElementById('of-fuelType').value,
+    litres: parseFloat(document.getElementById('of-litres').value) || 0,
+    pricePerLitre: parseFloat(document.getElementById('of-pricePerLitre').value) || 0,
+    total: parseFloat(total),
+    payment: document.getElementById('of-payment').value,
+    odometer: parseInt(document.getElementById('of-odometer').value) || null,
+    claimStatus: document.getElementById('of-claimStatus').value,
+    notes: document.getElementById('of-notes').value.trim(),
+    imageData: state.pendingImage || null,
+    createdAt: new Date().toISOString(),
+  };
+  txs.push(tx);
+  saveTransactions(txs);
+  state.pendingImage = null;
+  state.ocrData = null;
+  toast(t('tx_saved'));
+  navigate('history');
+}
+
+// ============================================================
+// SCREEN: PROCESSING
+// ============================================================
+let processingTimer = null;
+function renderProcessing() {
+  return `
+    <div class="processing-wrap">
+      ${state.pendingImage ? `<div class="processing-img"><img src="${state.pendingImage}" alt="receipt" style="filter:blur(1px)"></div>` : '<div class="processing-img-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'}
+      <div class="spinner"></div>
+      <div>
+        <div class="processing-title" data-i18n="processing"></div>
+      </div>
+      <div class="step-list">
+        <div class="step-item" id="step-1"><div class="step-dot"></div><span data-i18n="reading_text"></span></div>
+        <div class="step-item" id="step-2"><div class="step-dot"></div><span data-i18n="parsing"></span></div>
+        <div class="step-item" id="step-3"><div class="step-dot"></div><span data-i18n="verifying"></span></div>
+      </div>
+    </div>
+  `;
+}
+
+function startProcessing() {
+  navigate('processing');
+  applyI18n();
+  const s1 = document.getElementById('step-1');
+  const s2 = document.getElementById('step-2');
+  const s3 = document.getElementById('step-3');
+  if (s1) s1.classList.add('active');
+  setTimeout(() => {
+    if (s1) { s1.classList.remove('active'); s1.classList.add('done'); }
+    if (s2) s2.classList.add('active');
+  }, 700);
+  setTimeout(() => {
+    if (s2) { s2.classList.remove('active'); s2.classList.add('done'); }
+    if (s3) s3.classList.add('active');
+  }, 1400);
+  setTimeout(() => {
+    if (s3) { s3.classList.remove('active'); s3.classList.add('done'); }
+  }, 2000);
+  setTimeout(() => {
+    state.ocrData = getNextOcrSample();
+    navigate('ocr_confirm');
+  }, 2300);
+}
+
+// ============================================================
+// SCREEN: VEHICLES
+// ============================================================
+function renderVehicles() {
+  const vs = getVehicles();
+  const listHtml = vs.length === 0
+    ? `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="empty-title" data-i18n="no_vehicles"></div><div class="empty-text" data-i18n="no_vehicles_sub"></div></div>`
+    : `<div class="tx-list">${vs.map(vehicleCardHtml).join('')}</div>`;
+  return `${listHtml}<div style="height:8px"></div><div class="action-bar"><button class="btn btn-primary btn-full" onclick="navigate('add_vehicle',{editVehicleId:null})">${svgPlus()} ${t('add_vehicle')}</button></div>`;
+}
+
+function vehicleTypeIcon(type) {
+  if (type === 'Motorcycle') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17h14M9 7l3 4h4l2-4"/></svg>`;
+  if (type === 'Van' || type === 'Truck') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>`;
+}
+
+function vehicleCardHtml(v) {
+  const txs = getTransactions().filter(t => t.vehicleId === v.id);
+  const total = txs.reduce((s, t) => s + (parseFloat(t.total) || 0), 0);
+  return `
+    <div class="vehicle-card">
+      <div class="vehicle-icon">${vehicleTypeIcon(v.type)}</div>
+      <div class="vehicle-info">
+        <div class="vehicle-name">${v.nickname}</div>
+        <div class="vehicle-plate">${v.plate} · ${v.type} · ${v.defaultFuel}</div>
+        <div class="vehicle-plate" style="margin-top:2px">${txs.length} trips · ${fmtRM(total)} total</div>
+      </div>
+      <div class="vehicle-actions">
+        <button class="icon-btn edit" onclick="navigate('add_vehicle',{editVehicleId:'${v.id}'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn danger" onclick="deleteVehicle('${v.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+      </div>
+    </div>
+  `;
+}
+
+function deleteVehicle(id) {
+  if (!confirm(t('confirm_delete_vehicle'))) return;
+  saveVehicles(getVehicles().filter(v => v.id !== id));
+  toast(t('vehicle_deleted'));
+  render();
+}
+
+// ============================================================
+// SCREEN: ADD/EDIT VEHICLE
+// ============================================================
+function renderAddVehicle() {
+  const v = state.editingVehicleId ? getVehicles().find(x => x.id === state.editingVehicleId) : null;
+  const d = v || {};
+  const types = ['Car','Motorcycle','Van','Truck'];
+  const fuels = ['RON95','RON97','RON100','Diesel'];
+  return `
+    <div class="form-section">
+      <div class="form-group">
+        <label class="form-label">${t('plate')} *</label>
+        <input class="form-input" id="vf-plate" value="${d.plate || ''}" placeholder="e.g. WQR 3421" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('nickname')} *</label>
+        <input class="form-input" id="vf-nickname" value="${d.nickname || ''}" placeholder="e.g. MyVi White">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('vehicle_type')}</label>
+        <select class="form-select" id="vf-type">${types.map(ty => `<option ${d.type===ty?'selected':''}>${ty}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('default_fuel')}</label>
+        <select class="form-select" id="vf-fuel">${fuels.map(f => `<option ${d.defaultFuel===f?'selected':''}>${f}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-outline" style="flex:0 0 auto;min-width:90px" onclick="goBack()" data-i18n="cancel"></button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveVehicle()">${t('save')}</button>
+    </div>
+  `;
+}
+
+function saveVehicle() {
+  const plate = (document.getElementById('vf-plate').value || '').trim().toUpperCase();
+  const nickname = (document.getElementById('vf-nickname').value || '').trim();
+  if (!plate || !nickname) { toast('Please enter plate and nickname.'); return; }
+  const vs = getVehicles();
+  const id = state.editingVehicleId || uid();
+  const v = { id, plate, nickname, type: document.getElementById('vf-type').value, defaultFuel: document.getElementById('vf-fuel').value, createdAt: new Date().toISOString() };
+  if (state.editingVehicleId) {
+    const idx = vs.findIndex(x => x.id === id);
+    if (idx >= 0) vs[idx] = v; else vs.push(v);
+  } else { vs.push(v); }
+  saveVehicles(vs);
+  state.editingVehicleId = null;
+  toast(t('vehicle_saved'));
+  navigate('vehicles');
+}
+
+// ============================================================
+// SCREEN: CLAIM SUMMARY
+// ============================================================
+function renderClaimSummary() {
+  const months = getMonthKeys();
+  const selMonth = state.claimMonth || months[0] || currentMonthKey();
+  const selStatus = state.claimStatus || 'all';
+  const statuses = ['all','Personal','Business','Pending Claim','Claimed','Rejected'];
+  const statusLabels = { all: t('filter_all'), Personal: t('claim_personal'), Business: t('claim_business'), 'Pending Claim': t('claim_pending'), Claimed: t('claim_claimed'), Rejected: t('claim_rejected') };
+
+  let txs = getTransactions().filter(t => t.date.startsWith(selMonth));
+  if (selStatus !== 'all') txs = txs.filter(t => t.claimStatus === selStatus);
+  txs.sort((a,b) => a.date.localeCompare(b.date));
+  const total = txs.reduce((s,t) => s + (parseFloat(t.total)||0), 0);
+  const totalL = txs.reduce((s,t) => s + (parseFloat(t.litres)||0), 0);
+
+  const tableHtml = txs.length === 0
+    ? `<div class="empty-state" style="padding:30px 16px"><div class="empty-title" data-i18n="no_claims"></div><div class="empty-text" data-i18n="no_claims_sub"></div></div>`
+    : `<div style="overflow-x:auto;padding:0 16px"><table class="claim-table">
+        <thead><tr><th>${t('date')}</th><th>${t('station_name')}</th><th>${t('litres')}</th><th>${t('total_amount')}</th><th>${t('claim_status')}</th></tr></thead>
+        <tbody>
+          ${txs.map(tx => `<tr><td>${fmtDate(tx.date)}</td><td>${tx.station}</td><td>${parseFloat(tx.litres).toFixed(1)}L</td><td>${fmtRM(tx.total)}</td><td><span class="badge ${badgeClass(tx.claimStatus)}">${claimLabel(tx.claimStatus)}</span></td></tr>`).join('')}
+          <tr class="claim-total"><td colspan="3"><strong>${t('total')} (${txs.length} items)</strong></td><td><strong>${fmtRM(total)}</strong></td><td>${totalL.toFixed(1)}L</td></tr>
+        </tbody>
+      </table></div>`;
+
+  return `
+    <div class="section" style="padding-bottom:8px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px" data-i18n="month"></label>
+          <select class="month-select" style="width:100%" onchange="setClaimFilter('month',this.value)">${months.map(mk => `<option value="${mk}" ${mk===selMonth?'selected':''}>${monthLabel(mk)}</option>`).join('')}</select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px" data-i18n="status_filter"></label>
+          <select class="month-select" style="width:100%" onchange="setClaimFilter('status',this.value)">${statuses.map(s => `<option value="${s}" ${s===selStatus?'selected':''}>${statusLabels[s]}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <div class="stat-card" style="flex:1;padding:10px"><div class="stat-label">${t('total_spent')}</div><div class="stat-value" style="font-size:18px">${fmtRM(total)}</div></div>
+        <div class="stat-card" style="flex:1;padding:10px"><div class="stat-label">${t('transactions')}</div><div class="stat-value" style="font-size:18px">${txs.length}</div></div>
+      </div>
+    </div>
+    ${tableHtml}
+    <div class="action-bar"><button class="btn btn-primary btn-full" onclick="exportCSV()">${t('export_csv')}</button></div>
+  `;
+}
+
+function setClaimFilter(type, val) {
+  if (type === 'month') state.claimMonth = val;
+  else state.claimStatus = val;
+  render();
+}
+
+function exportCSV() {
+  const months = getMonthKeys();
+  const selMonth = state.claimMonth || months[0] || currentMonthKey();
+  const selStatus = state.claimStatus || 'all';
+  let txs = getTransactions().filter(t => t.date.startsWith(selMonth));
+  if (selStatus !== 'all') txs = txs.filter(t => t.claimStatus === selStatus);
+  txs.sort((a,b) => a.date.localeCompare(b.date));
+
+  const header = ['Date','Time','Station','Branch','Fuel Type','Litres','Price/L','Total (RM)','Payment','Vehicle','Odometer','Claim Status','Notes'];
+  const rows = txs.map(tx => [tx.date, tx.time||'', tx.station, tx.branch||'', tx.fuelType, tx.litres, tx.pricePerLitre, tx.total, tx.payment||'', vehicleName(tx.vehicleId), tx.odometer||'', tx.claimStatus, tx.notes||'']);
+  const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `PetrolScan_${selMonth}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast(t('export_done'));
+}
+
+// ============================================================
+// SCREEN: SETTINGS
+// ============================================================
+function renderSettings() {
+  const isMy = state.lang === 'my';
+  return `
+    <div class="section">
+      <div class="settings-list">
+        <div class="settings-item">
+          <div><div class="settings-label" data-i18n="language"></div><div class="settings-sub" data-i18n="language_sub"></div></div>
+          <label class="toggle"><input type="checkbox" ${isMy ? 'checked' : ''} onchange="toggleLang(this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div style="margin-top:6px;padding:0 4px;font-size:12px;color:var(--text-muted)">EN → MY</div>
+    </div>
+    <div class="section" style="padding-top:0">
+      <div class="settings-list">
+        <div class="settings-item" style="cursor:pointer" onclick="if(confirm(${JSON.stringify(t('confirm_clear'))})){clearAllData()}">
+          <div><div class="settings-label" style="color:var(--danger)" data-i18n="clear_data"></div><div class="settings-sub" data-i18n="clear_data_sub"></div></div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="section" style="padding-top:0">
+      <div class="about-card">
+        <div class="app-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px" data-i18n="about"></div>
+        <div style="font-size:13px;color:var(--text-muted)" data-i18n="version"></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Scan · Track · Claim</div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleLang(isMy) {
+  state.lang = isMy ? 'my' : 'en';
+  saveSettings({ lang: state.lang });
+  render();
+}
+
+function clearAllData() {
+  localStorage.removeItem(KEYS.vehicles);
+  localStorage.removeItem(KEYS.transactions);
+  toast(t('data_cleared'));
+  seedIfEmpty();
+  navigate('home');
+}
+
+// ============================================================
+// SCAN MODAL & IMAGE HANDLING
+// ============================================================
+function showScanModal() {
+  document.getElementById('scan-modal').classList.add('show');
+}
+function closeScanModal() {
+  document.getElementById('scan-modal').classList.remove('show');
+}
+function triggerCamera() {
+  closeScanModal();
+  document.getElementById('file-camera').click();
+}
+function triggerGallery() {
+  closeScanModal();
+  document.getElementById('file-gallery').click();
+}
+function handleImageSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.pendingImage = e.target.result;
+    startProcessing();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// ============================================================
+// SVG HELPERS
+// ============================================================
+function svgPlus() { return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`; }
+function svgEdit() { return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`; }
+function svgTrash() { return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`; }
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ============================================================
+// ATTACH LISTENERS (called after render)
+// ============================================================
+function attachListeners() {
+  // Close modal on overlay click
+  const overlay = document.getElementById('scan-modal');
+  overlay.onclick = (e) => { if (e.target === overlay) closeScanModal(); };
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+seedIfEmpty();
+navigate('home');
+</script>
+</body>
+</html>
